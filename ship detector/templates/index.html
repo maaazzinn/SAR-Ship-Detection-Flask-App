@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naval Command | Ship Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e293b 75%, #0f172a 100%);
+            min-height: 100vh;
+            font-family: 'Rajdhani', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated radar sweep background */
+        .radar-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.1;
+        }
+
+        .radar-circle {
+            position: absolute;
+            border: 1px solid #22d3ee;
+            border-radius: 50%;
+            animation: sonar 4s infinite;
+        }
+
+        .radar-circle:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .radar-circle:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            top: 60%;
+            right: 15%;
+            animation-delay: 1s;
+        }
+
+        .radar-circle:nth-child(3) {
+            width: 150px;
+            height: 150px;
+            bottom: 20%;
+            left: 70%;
+            animation-delay: 2s;
+        }
+
+        @keyframes sonar {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* Floating tactical markers */
+        .tactical-marker {
+            position: absolute;
+            color: #22d3ee;
+            font-size: 12px;
+            pointer-events: none;
+            animation: drift 8s infinite linear;
+            opacity: 0.6;
+        }
+
+        @keyframes drift {
+            0% {
+                transform: translateY(100vh) translateX(0) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) translateX(30px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .nav-header {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(34, 211, 238, 0.3);
+            border-radius: 0 0 15px 15px;
+            padding: 1rem 2rem;
+            margin: -2rem -2rem 2rem -2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mission-info {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            color: #22d3ee;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        h1 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 2rem 0;
+            background: linear-gradient(45deg, #22d3ee, #06b6d4, #0891b2);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: waveShift 3s ease-in-out infinite;
+            text-shadow: 0 0 30px rgba(34, 211, 238, 0.3);
+            position: relative;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        @keyframes waveShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .classification-badge {
+            background: linear-gradient(45deg, #dc2626, #b91c1c);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+        }
+
+        .command-section {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(34, 211, 238, 0.4);
+            border-left: 5px solid #22d3ee;
+            border-radius: 10px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 
+                0 15px 35px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .command-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+            animation: scanLine 3s infinite;
+        }
+
+        @keyframes scanLine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-icon {
+            background: linear-gradient(45deg, #22d3ee, #06b6d4);
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 1.2rem;
+        }
+
+        .file-upload-area {
+            position: relative;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            border: 3px dashed rgba(34, 211, 238, 0.5);
+            border-radius: 15px;
+            padding: 3rem 2rem;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .file-upload-area:hover {
+            background: rgba(34, 211, 238, 0.05);
+            border-color: #22d3ee;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(34, 211, 238, 0.15);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-content {
+            pointer-events: none;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #22d3ee;
+            margin-bottom: 1rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-text {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .upload-subtext {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+
+        .tactical-btn {
+            background: linear-gradient(45deg, #0891b2, #22d3ee);
+            border: 2px solid #22d3ee;
+            padding: 1rem 2.5rem;
+            border-radius: 8px;
+            color: #0f172a;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(34, 211, 238, 0.3);
+        }
+
+        .tactical-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .tactical-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(34, 211, 238, 0.4);
+            border-color: #06b6d4;
+        }
+
+        .tactical-btn:hover::before {
+            left: 100%;
+        }
+
+        .intel-section {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(16, 185, 129, 0.4);
+            border-left: 5px solid #10b981;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .image-display {
+            position: relative;
+            text-align: center;
+            margin: 2rem 0;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 1rem;
+            border: 2px solid rgba(34, 211, 238, 0.3);
+        }
+
+        .image-display img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            border: 2px solid rgba(34, 211, 238, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .image-display:hover img {
+            transform: scale(1.02);
+            border-color: #22d3ee;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(34, 211, 238, 0.2);
+        }
+
+        h2 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #22d3ee;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 25px;
+            background: linear-gradient(45deg, #22d3ee, #10b981);
+            border-radius: 2px;
+        }
+
+        .analysis-output {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            font-family: 'Roboto Mono', monospace;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.4);
+            color: #10b981;
+        }
+
+        .threat-alert {
+            background: rgba(220, 38, 38, 0.1);
+            border: 2px solid rgba(220, 38, 38, 0.5);
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 1rem 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .coordinates {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin: 0.5rem;
+        }
+
+        /* Loading animation */
+        .tactical-loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .radar-loader {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(34, 211, 238, 0.1);
+            border-left: 4px solid #22d3ee;
+            border-radius: 50%;
+            animation: radarSpin 1s linear infinite;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+
+        .radar-loader::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 30px;
+            background: #22d3ee;
+            transform: translate(-50%, -50%);
+            transform-origin: bottom;
+            animation: sweep 2s linear infinite;
+        }
+
+        @keyframes radarSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes sweep {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .command-section {
+                padding: 1.5rem;
+            }
+
+            .nav-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated radar background -->
+    <div class="radar-bg">
+        <div class="radar-circle"></div>
+        <div class="radar-circle"></div>
+        <div class="radar-circle"></div>
+    </div>
+    <div id="tacticalMarkers"></div>
+
+    <div class="container">
+        <div class="nav-header">
+            <div class="nav-content">
+                <div class="mission-info">
+                    <div>OPERATION: MARITIME SURVEILLANCE</div>
+                    <div>SECTOR: NAVAL COMMAND</div>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>SYSTEM OPERATIONAL</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="classification-badge">⚠️ CLASSIFIED - NAVAL INTELLIGENCE</div>
+        
+        <h1>🛡️ Naval Ship Detection System</h1>
+        
+        <div class="command-section">
+            <div class="section-header">
+                <div class="section-icon">📡</div>
+                <h2>Intelligence Upload Portal</h2>
+            </div>
+            
+            <form method="post" enctype="multipart/form-data" id="tacticalForm">
+                <div class="file-upload-area">
+                    <div class="file-upload">
+                        <input type="file" name="file" accept="image/*" required id="missionFile">
+                        <div class="upload-content">
+                            <div class="upload-icon">🛰️</div>
+                            <div class="upload-text">Upload Satellite Intelligence</div>
+                            <div class="upload-subtext">Maritime surveillance imagery • Max file size: 50MB</div>
+                        </div>
+                    </div>
+                </div>
+                <center>
+                    <button type="submit" class="tactical-btn">
+                        🎯 Initiate Detection Protocol
+                    </button>
+                </center>
+            </form>
+        </div>
+
+        <div class="tactical-loading" id="tacticalLoading">
+            <div class="radar-loader"></div>
+            <p>Analyzing maritime intelligence data...</p>
+            <p style="font-size: 0.9rem; color: #94a3b8;">Processing satellite imagery • Detecting vessel signatures</p>
+        </div>
+
+        {% if error %}
+            <div class="intel-section">
+                <div class="threat-alert">
+                    ⚠️ SYSTEM ALERT: {{ error }}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if uploaded_image %}
+            <div class="intel-section">
+                <div class="section-header">
+                    <div class="section-icon">📷</div>
+                    <h2>Original Intelligence Feed</h2>
+                </div>
+                <div class="coordinates">LAT: 34.0522° N</div>
+                <div class="coordinates">LON: 118.2437° W</div>
+                <div class="coordinates">ALT: 450km</div>
+                <div class="image-display">
+                    <img src="{{ url_for('uploaded_file', filename=uploaded_image) }}" alt="Satellite Intelligence Image">
+                </div>
+            </div>
+        {% endif %}
+
+        {% if prediction %}
+            <div class="intel-section">
+                <div class="section-header">
+                    <div class="section-icon">🔍</div>
+                    <h2>Threat Analysis Report</h2>
+                </div>
+                <div class="analysis-output">{{ prediction }}</div>
+            </div>
+        {% endif %}
+
+        {% if output_image %}
+            <div class="intel-section">
+                <div class="section-header">
+                    <div class="section-icon">🎯</div>
+                    <h2>Target Identification Results</h2>
+                </div>
+                <div class="image-display">
+                    <img src="{{ url_for('predicted_file', filename=output_image) }}" alt="Ship Detection Analysis">
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Create floating tactical markers
+        function createTacticalMarkers() {
+            const markersContainer = document.getElementById('tacticalMarkers');
+            const markers = ['⚓', '🚢', '🛥️', '⛵', '🔍', '📡', '🎯'];
+            
+            setInterval(() => {
+                const marker = document.createElement('div');
+                marker.className = 'tactical-marker';
+                marker.textContent = markers[Math.floor(Math.random() * markers.length)];
+                marker.style.left = Math.random() * 100 + '%';
+                marker.style.animationDelay = Math.random() * 2 + 's';
+                marker.style.animationDuration = (Math.random() * 4 + 6) + 's';
+                
+                markersContainer.appendChild(marker);
+                
+                // Remove marker after animation
+                setTimeout(() => {
+                    if (marker.parentNode) {
+                        marker.parentNode.removeChild(marker);
+                    }
+                }, 10000);
+            }, 800);
+        }
+
+        // Handle file upload feedback
+        document.getElementById('missionFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const uploadArea = document.querySelector('.file-upload-area');
+                const uploadContent = document.querySelector('.upload-content');
+                
+                uploadContent.innerHTML = `
+                    <div class="upload-icon">✅</div>
+                    <div class="upload-text">Intelligence Package Received</div>
+                    <div class="upload-subtext">File: ${file.name} • Size: ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                `;
+                
+                uploadArea.style.background = 'rgba(16, 185, 129, 0.1)';
+                uploadArea.style.borderColor = '#10b981';
+            }
+        });
+
+        // Handle form submission with loading
+        document.getElementById('tacticalForm').addEventListener('submit', function() {
+            document.getElementById('tacticalLoading').style.display = 'block';
+            document.querySelector('.command-section').style.opacity = '0.5';
+        });
+
+        // Initialize tactical markers
+        createTacticalMarkers();
+
+        // Add tactical button effects
+        document.querySelectorAll('.tactical-btn').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 10px 25px rgba(34, 211, 238, 0.4), 0 0 20px rgba(34, 211, 238, 0.2)';
+            });
+            
+            btn.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+                this.style.boxShadow = '0 5px 15px rgba(34, 211, 238, 0.3)';
+            });
+        });
+
+        // Add typing effect to mission info
+        function typeWriter(element, text, speed = 50) {
+            let i = 0;
+            element.innerHTML = '';
+            
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+    </script>
+</body>
+</html>
